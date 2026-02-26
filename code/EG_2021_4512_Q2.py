@@ -3,66 +3,69 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-# Helper function
+# Helper to save images
 def save_img(title, img, fname):
     plt.figure(figsize=(5,5))
-    plt.imshow(img, cmap='gray')
+    if len(img.shape) == 2:
+        plt.imshow(img, cmap='gray')
+    else:
+        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.title(title)
     plt.axis('off')
-    
-    out_path = os.path.join("../outputs", fname)
-    plt.savefig(out_path, bbox_inches='tight')
-    print("[SAVED] ", out_path)
+
+    out_dir = "../outputs"
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    save_path = os.path.join(out_dir, fname)
+    plt.savefig(save_path, bbox_inches='tight')
+    print("[SAVED]", save_path)
     plt.close()
 
 
-# Salt & Pepper Noise function
-def add_salt_pepper_noise(image, amount):
+# Function to add salt & pepper noise
+def add_salt_pepper(image, amount):
     noisy = image.copy()
-    num_pixels = int(amount * image.size)
+    prob = amount
 
-    # S A L T
-    y_coords = np.random.randint(0, image.shape[0], num_pixels)
-    x_coords = np.random.randint(0, image.shape[1], num_pixels)
-    noisy[y_coords, x_coords] = 255
+    # Salt noise (white pixels)
+    num_salt = int(prob * image.size * 0.5)
+    coords_salt = (
+        np.random.randint(0, image.shape[0], num_salt),
+        np.random.randint(0, image.shape[1], num_salt)
+    )
+    noisy[coords_salt] = 255
 
-    # P E P P E R
-    y_coords = np.random.randint(0, image.shape[0], num_pixels)
-    x_coords = np.random.randint(0, image.shape[1], num_pixels)
-    noisy[y_coords, x_coords] = 0
+    # Pepper noise (black pixels)
+    num_pepper = int(prob * image.size * 0.5)
+    coords_pepper = (
+        np.random.randint(0, image.shape[0], num_pepper),
+        np.random.randint(0, image.shape[1], num_pepper)
+    )
+    noisy[coords_pepper] = 0
 
     return noisy
 
 
 if __name__ == "__main__":
-
-    # Load image 2
+    # Load Image 2 in grayscale
     img = cv2.imread("../images/Image_2.jpg", cv2.IMREAD_GRAYSCALE)
-
     if img is None:
-        print("Error: Image_2.jpg not found")
+        print("Error: Image_2.jpg not found!")
         exit()
 
-    # Noise levels
-    noise_levels = [0.10, 0.20]
+    # (a) Add noise
+    noise10 = add_salt_pepper(img, 0.10)
+    noise20 = add_salt_pepper(img, 0.20)
 
-    # Kernel sizes
-    kernels = [3, 5, 11]
+    save_img("Salt & Pepper Noise (10%)", noise10, "Q2_noise_10.png")
+    save_img("Salt & Pepper Noise (20%)", noise20, "Q2_noise_20.png")
 
-    for noise in noise_levels:
+    # (b) Median filters
+    med3 = cv2.medianBlur(noise20, 3)
+    med5 = cv2.medianBlur(noise20, 5)
+    med11 = cv2.medianBlur(noise20, 11)
 
-        noisy_img = add_salt_pepper_noise(img, noise)
-        save_img(
-            f"Salt & Pepper Noise ({int(noise*100)}%)",
-            noisy_img,
-            f"Q2_noise_{int(noise*100)}.png"
-        )
-
-        for k in kernels:
-            filtered = cv2.medianBlur(noisy_img, k)
-
-            save_img(
-                f"Median Filter {k}x{k} ({int(noise*100)}% noise)",
-                filtered,
-                f"Q2_median_{k}_{int(noise*100)}.png"
-            )
+    save_img("Median Filter 3x3", med3, "Q2_med_3x3.png")
+    save_img("Median Filter 5x5", med5, "Q2_med_5x5.png")
+    save_img("Median Filter 11x11", med11, "Q2_med_11x11.png")
